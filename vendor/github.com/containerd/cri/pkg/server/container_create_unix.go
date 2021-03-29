@@ -20,18 +20,20 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/containerd/cgroups"
+	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/contrib/apparmor"
 	"github.com/containerd/containerd/contrib/seccomp"
 	"github.com/containerd/containerd/oci"
 	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
 	runtimespec "github.com/opencontainers/runtime-spec/specs-go"
-	selinux "github.com/opencontainers/selinux/go-selinux"
+	"github.com/opencontainers/selinux/go-selinux"
 	"github.com/opencontainers/selinux/go-selinux/label"
 	"github.com/pkg/errors"
 	runtime "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
@@ -322,6 +324,14 @@ func (c *criService) containerSpecOpts(config *runtime.ContainerConfig, imageCon
 	if seccompSpecOpts != nil {
 		specOpts = append(specOpts, seccompSpecOpts)
 	}
+
+	specOpts = append(specOpts, func(ctx context.Context, client oci.Client, c *containers.Container, s *runtimespec.Spec) error {
+		if len(s.Process.Args) > 1 && s.Process.Args[0] == "" {
+			s.Process.Args = s.Process.Args[1:]
+		}
+		return nil
+	})
+
 	return specOpts, nil
 }
 
